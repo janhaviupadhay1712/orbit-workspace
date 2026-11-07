@@ -1,5 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+// Fast gate: checks the session cookie locally (refreshing it when expired) instead of calling Supabase Auth on every navigation.
+// This is only a redirect convenience. Every page, server action and API route still verifies the user with auth.getUser(), and the database enforces RLS.
 export async function middleware(req: NextRequest) {
   const p = req.nextUrl.pathname;
   if (p.startsWith("/login") || p.startsWith("/auth/")) return NextResponse.next(); // public: sign-in page and OAuth callback
@@ -9,8 +11,8 @@ export async function middleware(req: NextRequest) {
       list.forEach(({ name, value }) => req.cookies.set(name, value));
       res = NextResponse.next({ request: req });
       list.forEach(({ name, value, options }) => res.cookies.set(name, value, options)); } } });
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return NextResponse.redirect(new URL("/login?next=" + encodeURIComponent(p), req.url));
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return NextResponse.redirect(new URL("/login?next=" + encodeURIComponent(p), req.url));
   return res;
 }
 export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"] };

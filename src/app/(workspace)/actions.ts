@@ -182,3 +182,85 @@ export async function removeAvatar() {
   await c.sb.from("profiles").update({ avatar_url: null, updated_at: new Date().toISOString() }).eq("id", c.user.id);
   revalidatePath("/", "layout"); redirect("/profile?saved=photo_removed");
 }
+
+// ---- AI proposals: applied only after the user clicks Approve; re-validated and run under the user's own RLS session ----
+export async function applyProposal(raw: unknown): Promise<{ ok: boolean; message: string }> {
+  const c = await getContext(); if (!c.orgId) return { ok: false, message: "No organization." };
+  const { proposalSchema } = await import("@/lib/schemas"); const p = proposalSchema.safeParse(raw);
+  if (!p.success) return { ok: false, message: "This proposal is invalid. Please ask again." };
+  const prop = p.data;
+  const { data: seen } = await c.sb.from("activities").select("id").eq("action", "ai.proposal_applied").eq("entity_id", prop.id).limit(1);
+  if (seen?.length) return { ok: true, message: "Already applied." }; // duplicate-click / retry protection
+  let created = 0, updated = 0; const problems: string[] = [];
+  if (prop.creates.length) {
+    const rows = prop.creates.map(t => ({ org_id: c.orgId, project_id: t.project_id, title: t.title, priority: t.priority, due_date: t.due_date, status: "todo", created_by: c.user.id }));
+    const { data, error } = await c.sb.from("tasks").insert(rows).select("id");
+    if (error) problems.push("Could not create the tasks."); else created = data?.length ?? 0;
+  }
+  for (const u of prop.updates) {
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (u.status) patch.status = u.status; if (u.priority) patch.priority = u.priority; if (u.due_date !== undefined) patch.due_date = u.due_date;
+    const { data, error } = await c.sb.from("tasks").update(patch).eq("id", u.task_id).select("id");
+    if (error || !data?.length) problems.push(`Could not update “${u.task_title}”.`); else updated++;
+  }
+  if (created + updated > 0) await log(c, "ai.proposal_applied", "ai", prop.id);
+  revalidatePath("/", "layout");
+  const done = [created && `created ${created}`, updated && `updated ${updated}`].filter(Boolean).join(", ");
+  return { ok: problems.length === 0, message: [done && `Done: ${done}.`, ...problems].filter(Boolean).join(" ") || "Nothing was changed." };
+}
+
+
+// ---- Project editing / deletion (errors come back as ?error= codes instead of crashing the page) ----
+const isId = (s: string) => /^[0-9a-f-]{36}$/i.test(s);
+export async function updateProject(f: FormData) {
+  const c = await getContext(); const id = String(f.get("id") ?? ""); if (!isId(id)) redirect("/projects");
+  const { projectEditSchema } = await import("@/lib/schemas");
+  const p = projectEditSchema.safeParse({ id, name: f.get("name"), description: f.get("description") ?? "", status: f.get("status"),
+    start_date: f.get("start_date") ?? "", target_date: f.get("target_date") ?? "" });
+  if (!p.success) redirect(`/projects/${id}?error=invalid`);
+  const v = p.data;
+  if (v.start_date && v.target_date && v.target_date < v.start_date) redirect(`/projects/${id}?error=dates`);
+  const { data, error } = await c.sb.from("projects").update({ name: v.name, description: v.description || null, status: v.status,
+    start_date: v.start_date || null, target_date: v.target_date || null, updated_at: new Date().toISOString() }).eq("id", id).select("id");
+  if (error || !data?.length) redirect(`/projects/${id}?error=save`);
+  await log(c, "project.updated", "project", id); revalidatePath("/", "layout"); redirect(`/projects/${id}?saved=1`);
+}
+export async function deleteProject(f: FormData) {
+  const c = await getContext(); const id = String(f.get("id") ?? ""); if (!isId(id)) redirect("/projects");
+  if (c.role !== "owner" && c.role !== "admin") redirect(`/projects/${id}?error=forbidden`);
+  const { data: pr } = await c.sb.from("projects").select("name").eq("id", id).maybeSingle(); if (!pr) redirect("/projects");
+  if (String(f.get("confirm") ?? "").trim() !== pr.name) redirect(`/projects/${id}?error=confirm`); // must type the project name
+  const { data, error } = await c.sb.from("projects").delete().eq("id", id).select("id");
+  if (error || !data?.length) redirect(`/projects/${id}?error=delete`);
+  await log(c, "project.deleted", "project"); revalidatePath("/", "layout"); redirect("/projects");
+}
+
+// ---- Sample workspace (owners/admins only; dates are relative to today so the demo always looks current) ----
+import { SAMPLE_NAME } from "@/lib/sample";
+export async function loadSampleProject() {
+  const c = await getContext(); if (!c.orgId) redirect("/");
+  if (c.role !== "owner" && c.role !== "admin") redirect("/?sample=forbidden");
+  const { data: exists } = await c.sb.from("projects").select("id").eq("name", SAMPLE_NAME).limit(1);
+  if (exists?.length) redirect(`/projects/${exists[0].id}`); // never create a second copy
+  const day = (n: number) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+  const { data: pr, error } = await c.sb.from("projects").insert({ org_id: c.orgId, name: SAMPLE_NAME, status: "active", owner_id: c.user.id,
+    description: "Example project showing how Orbit works. Safe to edit, or remove it from the Home page.", start_date: day(-10), target_date: day(21) }).select("id").single();
+  if (error || !pr) redirect("/?sample=failed");
+  const t = (title: string, status: string, priority: string, due: number | null, parent_id?: string) => ({ org_id: c.orgId, project_id: pr.id, title, status, priority,
+    due_date: due === null ? null : day(due), created_by: c.user.id, assignee_id: c.user.id, ...(parent_id ? { parent_id } : {}) });
+  const { data: made, error: e2 } = await c.sb.from("tasks").insert([
+    t("Write homepage copy", "done", "high", -6), t("Design hero section", "done", "medium", -4), t("Build landing page", "in_progress", "high", 2),
+    t("Finalize pricing", "todo", "urgent", -1), t("Set up analytics", "todo", "medium", 5), t("Prepare launch announcement", "in_review", "medium", 7),
+    t("Collect 5 beta testimonials", "backlog", "low", null), t("Fix mobile layout bugs", "in_progress", "high", -2)]).select("id, title");
+  if (e2 || !made) { await c.sb.from("projects").delete().eq("id", pr.id); redirect("/?sample=failed"); }
+  const id = Object.fromEntries(made.map((x: any) => [x.title, x.id as string]));
+  await c.sb.from("tasks").insert([t("Draft Instagram post", "todo", "medium", 6, id["Prepare launch announcement"]), t("Draft email to waitlist", "done", "medium", 3, id["Prepare launch announcement"])]);
+  await c.sb.from("task_dependencies").insert({ task_id: id["Build landing page"], depends_on_id: id["Finalize pricing"], created_by: c.user.id }); // shows the "Blocked" badge
+  await log(c, "sample.loaded", "project", pr.id); revalidatePath("/", "layout"); redirect(`/projects/${pr.id}`);
+}
+export async function removeSampleProject() {
+  const c = await getContext(); if (c.role !== "owner" && c.role !== "admin") redirect("/?sample=forbidden");
+  const { error } = await c.sb.from("projects").delete().eq("name", SAMPLE_NAME);
+  if (error) redirect("/?sample=failed");
+  await log(c, "sample.removed", "project"); revalidatePath("/", "layout"); redirect("/");
+}

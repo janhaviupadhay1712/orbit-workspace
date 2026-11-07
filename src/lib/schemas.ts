@@ -20,3 +20,16 @@ export const roleChangeSchema = z.object({ user_id: z.string().uuid(), role: z.e
 export const taskEditSchema = z.object({ id: z.string().uuid(), title: z.string().trim().min(1).max(200), description: z.string().max(4000).default(""),
   status: z.enum(STATUSES), priority: z.enum(PRIORITIES), due_date: z.string().date().or(z.literal("")),
   assignee_id: z.string().uuid().or(z.literal("")), loaded_at: z.string().min(1) });
+
+  // An AI-prepared change set. Nothing is written until the user approves it; the server re-validates it first.
+export const proposalSchema = z.object({
+  id: z.string().uuid(), summary: z.string().max(300),
+  creates: z.array(z.object({ project_id: z.string().uuid(), project_name: z.string().max(120), title: z.string().trim().min(1).max(200),
+    priority: z.enum(PRIORITIES).default("medium"), due_date: z.string().date().nullable().default(null) })).max(20).default([]),
+  updates: z.array(z.object({ task_id: z.string().uuid(), task_title: z.string().max(200), status: z.enum(STATUSES).optional(),
+    priority: z.enum(PRIORITIES).optional(), due_date: z.string().date().nullable().optional() })).max(20).default([]) });
+export type Proposal = z.infer<typeof proposalSchema>;
+
+export const PROJECT_STATUSES = ["planning", "active", "on_hold", "completed", "archived"] as const;
+export const projectEditSchema = z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120), description: z.string().max(2000).default(""),
+  status: z.enum(PROJECT_STATUSES), start_date: z.string().date().or(z.literal("")), target_date: z.string().date().or(z.literal("")) });

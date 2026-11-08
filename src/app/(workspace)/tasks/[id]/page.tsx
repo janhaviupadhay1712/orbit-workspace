@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getContext } from "@/lib/context";
 import { STATUSES, PRIORITIES } from "@/lib/schemas";
-import { updateTask, addComment, addSubtask, addDependency, removeDependency, setTaskStatus } from "../../actions";
+import { deleteTask, updateTask, addComment, addSubtask, addDependency, removeDependency, setTaskStatus } from "../../actions";
 const isDone = (s: string) => s === "done" || s === "cancelled";
+const ERR: Record<string, string> = { cycle: "That would create a circular dependency, so it wasn’t added.", failed: "Could not add that dependency.", delete: "You can only delete tasks you created, unless you are an owner or admin." };
 export default async function TaskDetail({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const { id } = await params; const { error: err } = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const { sb } = await getContext();
-  const { data: t } = await sb.from("tasks").select("id, org_id, title, description, status, priority, due_date, assignee_id, updated_at, parent_id, projects(name)").eq("id", id).maybeSingle();
+  const { sb, user, role } = await getContext();
+  const { data: t } = await sb.from("tasks").select("id, org_id, title, description, status, priority, due_date, assignee_id, updated_at, parent_id, created_by, projects(name)").eq("id", id).maybeSingle();
   if (!t) notFound(); // also returned for other organizations' tasks (RLS)
   const { data: members } = await sb.rpc("list_members", { o: t.org_id });
   const [{ data: comments }, { data: subs }, { data: by }, { data: blocks }, { data: parent }, { data: all }] = await Promise.all([
@@ -21,7 +22,8 @@ export default async function TaskDetail({ params, searchParams }: { params: Pro
   const get = (i: string) => all?.find(x => x.id === i);
   const blockers = [...byIds].map(get).filter(Boolean) as { id: string; title: string; status: string }[];
   const blocked = blockers.some(b => !isDone(b.status));
-  return (<div className="space-y-6 max-w-2xl"><Link href="/tasks" className="text-sm text-brand">← Tasks</Link>    {err && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-err">{err === "cycle" ? "That would create a circular dependency, so it wasn't added." : "Could not add that dependency."}</p>}
+  return (<div className="space-y-6 max-w-2xl"><Link href="/tasks" className="text-sm text-brand">← Tasks</Link>
+    {err && ERR[err] && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-err">{ERR[err]}</p>}
     <div className="card space-y-1">{parent && <Link href={`/tasks/${parent.id}`} className="text-xs text-sub">Subtask of {parent.title}</Link>}
       <h1 className="text-xl font-semibold">{t.title} {blocked && <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-xs font-normal text-warn">Blocked</span>}</h1>
       <p className="text-sm text-sub">{(t.projects as any)?.name} · {t.status.replace("_", " ")} · {t.priority}{t.due_date ? ` · due ${t.due_date}` : ""}</p>
@@ -56,5 +58,8 @@ export default async function TaskDetail({ params, searchParams }: { params: Pro
       {comments?.map(c => <div key={c.id} className="border-b border-line pb-2 last:border-0"><p className="text-sm whitespace-pre-wrap">{c.body}</p>
         <p className="text-xs text-sub">{new Date(c.created_at).toLocaleString()}</p></div>)}
       <form action={addComment} className="flex gap-2"><input type="hidden" name="task_id" value={t.id} />
-        <input name="body" required maxLength={4000} placeholder="Write a comment" className="input" /><button className="btn">Post</button></form></section></div>);
+        <input name="body" required maxLength={4000} placeholder="Write a comment" className="input" /><button className="btn">Post</button></form></section>
+    {(role === "owner" || role === "admin" || t.created_by === user.id) && <details className="card border-red-200"><summary className="cursor-pointer text-sm font-medium text-err">Delete task</summary>
+      <p className="mt-2 text-sm text-sub">This permanently deletes the task{!t.parent_id ? ", its subtasks," : ""} and its comments. It can’t be undone.</p>
+      <form action={deleteTask} className="mt-3"><input type="hidden" name="id" value={t.id} /><button className="rounded-lg bg-err px-3.5 py-2 text-sm font-medium text-white hover:bg-red-700">Yes, delete this task</button></form></details>}</div>);
 }

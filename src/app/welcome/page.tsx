@@ -33,5 +33,5 @@ export default async function Welcome({ searchParams }: { searchParams: Promise<
       <section className="bg-white"><div className="mx-auto max-w-2xl px-5 py-16 text-center"><h2 className="text-2xl font-bold tracking-tight">Be one of the first to try Orbit</h2>
         <p className="mt-2 text-sub">Join the waitlist and tell us how you manage work today. It helps us build the right things first.</p><div className="mt-6 text-left"><WaitlistForm source={source} /></div></div></section>
     </main>
-    <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-8 text-sm text-sub"><span>© {new Date().getFullYear()} Orbit Workspace</span><Link href="/login" className="hover:text-ink">Sign in</Link></footer></div>);
+    <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-8 text-sm text-sub"><span>© {new Date().getFullYear()} Orbit Workspace</span><nav className="flex gap-5"><Link href="/privacy" className="hover:text-ink">Privacy</Link><Link href="/terms" className="hover:text-ink">Terms</Link><Link href="/login" className="hover:text-ink">Sign in</Link></nav></footer></div>);
 }

@@ -1,6 +1,8 @@
 "use client";
 import { useActionState } from "react";
+import Link from "next/link";
 import { Check } from "lucide-react";
+
 import { joinWaitlist, type WaitlistState } from "./actions";
 const OPTIONS = ["Spreadsheets or notes", "Trello, Asana or ClickUp", "Notion", "WhatsApp or paper", "Nothing yet"];
 export default function WaitlistForm({ source }: { source: string }) {
@@ -14,5 +16,5 @@ export default function WaitlistForm({ source }: { source: string }) {
       <button className="btn !py-3 sm:shrink-0" disabled={pending}>{pending ? "Joining…" : "Get early access"}</button></div>
     <select name="use_case" defaultValue="" aria-label="What do you use for tasks today?" className="input text-sub"><option value="">What do you use for tasks today? (optional)</option>{OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}</select>
     {state && !state.ok && <p role="alert" className="text-sm text-err">{state.message}</p>}
-    <p className="text-xs text-sub">Free to join. We’ll only use your email to tell you about Orbit.</p></form>);
+    <p className="text-xs text-sub">Free to join. We’ll only use your email to tell you about Orbit. See our <Link href="/privacy" className="underline">Privacy Policy</Link>.</p></form>);
 }

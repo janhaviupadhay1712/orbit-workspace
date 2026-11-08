@@ -5,7 +5,7 @@ import { getContext } from "@/lib/context";
 import { progress, PROJECT_STATUSES, PRIORITIES } from "@/lib/schemas";
 import { StatusBadge, PriorityBadge, ProgressBar, EmptyState, label } from "@/components/ui";
 import TaskStatus from "@/components/task-status";
-import { updateProject, deleteProject, createTask } from "../../actions";
+import { updateProject, deleteProject, addTask } from "../../actions";
 const ERR: Record<string, string> = { invalid: "Please check the form (name is required).", dates: "The target date can’t be before the start date.", save: "Could not save the project.",
   forbidden: "Only owners and admins can delete projects.", confirm: "The name you typed didn’t match, so nothing was deleted.", delete: "Could not delete the project." };
 export default async function ProjectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; error?: string }> }) {
@@ -38,8 +38,9 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
           <label className="text-sm">Target<input name="target_date" type="date" defaultValue={p.target_date ?? ""} className="input mt-1" /></label></div>
         <div className="sm:col-span-2"><button className="btn">Save changes</button></div></form></details>
     <section><div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">Tasks</h2></div>
-      <form action={createTask} className="card mb-4 grid gap-3 sm:grid-cols-[1.5fr_auto_auto_auto]"><input type="hidden" name="project_id" value={p.id} />
+      <form action={addTask} className="card mb-4 grid gap-3 sm:grid-cols-[1.5fr_1fr_auto_auto_auto]"><input type="hidden" name="project_id" value={p.id} />
         <input name="title" required maxLength={200} placeholder="Add a task to this project" aria-label="Title" className="input" />
+        <select name="assignee_id" defaultValue={c.user.id} aria-label="Assignee" className="input"><option value="">Unassigned</option>{((members as any[]) ?? []).map(m => <option key={m.user_id} value={m.user_id}>{m.user_id === c.user.id ? "Me" : m.full_name || m.email}</option>)}</select>
         <select name="priority" defaultValue="medium" aria-label="Priority" className="input capitalize">{PRIORITIES.map(x => <option key={x}>{x}</option>)}</select>
         <input name="due_date" type="date" aria-label="Due date" className="input" /><button className="btn"><Plus size={16} />Add</button></form>
       {!all.length ? <EmptyState icon={ListChecks} title="No tasks yet" text="Add the first task above, or ask the AI Command Center to plan this project." />

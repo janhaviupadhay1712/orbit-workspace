@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Layers, MessageSquare, Users, BarChart3, Sparkles, ShieldCheck, Mail, Lock, Eye, EyeOff, Github } from "lucide-react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 const features = [
@@ -69,6 +70,7 @@ export default function Login() {
             <button type="button" onClick={() => setShow(s => !s)} aria-label={show ? "Hide password" : "Show password"}
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-400 hover:text-ink">{show ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
           {mode === "up" && <p className="text-xs text-sub">Use at least 8 characters.</p>}
+          {mode === "in" && <div className="text-right"><Link href="/forgot-password" className="text-sm font-medium text-brand hover:underline">Forgot password?</Link></div>}
           <div aria-live="polite">{msg && <p role="alert" className={`rounded-lg px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-ok" : "bg-red-50 text-err"}`}>{msg.text}</p>}</div>
           <button className="btn w-full !py-3 text-base" disabled={busy}>{busy ? "Please wait…" : mode === "in" ? "Sign In" : "Create account"}</button>
         </form>
@@ -79,6 +81,7 @@ export default function Login() {
         <p className="mt-8 text-center text-sm text-sub">{mode === "in" ? "Don’t have an account? " : "Already have an account? "}
           <button type="button" onClick={() => { setMode(m => (m === "in" ? "up" : "in")); setMsg(null); }} className="font-semibold text-brand hover:underline">
             {mode === "in" ? "Create an account" : "Sign in"}</button></p>
+        <p className="mt-4 text-center text-xs text-sub">By continuing you agree to our <Link href="/terms" className="underline">Terms</Link> and <Link href="/privacy" className="underline">Privacy Policy</Link>.</p>
       </div>
     </section>
   </main>);

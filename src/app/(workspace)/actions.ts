@@ -264,3 +264,27 @@ export async function removeSampleProject() {
   if (error) redirect("/?sample=failed");
   await log(c, "sample.removed", "project"); revalidatePath("/", "layout"); redirect("/");
 }
+
+
+// ---- Task creation with an assignee, and task deletion ----
+export async function addTask(f: FormData) {
+  const c = await getContext(); if (!c.orgId) throw new Error("No organization");
+  const v = taskSchema.parse(Object.fromEntries(f));
+  const raw = f.has("assignee_id") ? String(f.get("assignee_id")) : c.user.id; // "" = unassigned
+  let assignee_id: string | null = null;
+  if (raw) { // the assignee must belong to this organization (never trust the client)
+    const { data: m } = await c.sb.from("organization_members").select("user_id").eq("org_id", c.orgId).eq("user_id", raw).maybeSingle();
+    if (!m) throw new Error("Assignee is not a member of this organization.");
+    assignee_id = raw;
+  }
+  const { data, error } = await c.sb.from("tasks").insert({ ...v, due_date: v.due_date || null, org_id: c.orgId, created_by: c.user.id, assignee_id }).select("id").single();
+  if (error) throw new Error(error.message); await log(c, "task.created", "task", data.id); revalidatePath("/", "layout");
+}
+export async function deleteTask(f: FormData) {
+  const c = await getContext(); const id = String(f.get("id") ?? ""); if (!isId(id)) redirect("/tasks");
+  const { data: t } = await c.sb.from("tasks").select("id, project_id, parent_id").eq("id", id).maybeSingle(); if (!t) redirect("/tasks");
+  const { data, error } = await c.sb.from("tasks").delete().eq("id", id).select("id"); // the database decides who may delete (creator or admin)
+  if (error || !data?.length) redirect(`/tasks/${id}?error=delete`);
+  await log(c, "task.deleted", "task"); revalidatePath("/", "layout");
+  redirect(t.parent_id ? `/tasks/${t.parent_id}` : `/projects/${t.project_id}`);
+}

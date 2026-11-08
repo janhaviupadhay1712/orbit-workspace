@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // This is only a redirect convenience. Every page, server action and API route still verifies the user with auth.getUser(), and the database enforces RLS.
 export async function middleware(req: NextRequest) {
   const p = req.nextUrl.pathname;
-  if (p.startsWith("/login") || p.startsWith("/auth/") || p.startsWith("/welcome")) return NextResponse.next(); // public: sign-in, OAuth callback, landing page
+  if (p.startsWith("/login") || p.startsWith("/auth/") || p.startsWith("/welcome") || p.startsWith("/privacy") || p.startsWith("/terms") || p.startsWith("/forgot-password")) return NextResponse.next(); // public: sign-in, OAuth callback, landing page
   let res = NextResponse.next({ request: req });
   const sb = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     cookies: { getAll: () => req.cookies.getAll(), setAll: (list: { name: string; value: string; options?: any }[]) => {

@@ -288,3 +288,10 @@ export async function deleteTask(f: FormData) {
   await log(c, "task.deleted", "task"); revalidatePath("/", "layout");
   redirect(t.parent_id ? `/tasks/${t.parent_id}` : `/projects/${t.project_id}`);
 }
+
+// ---- AI chat history ----
+export async function deleteConversation(f: FormData) {
+  const c = await getContext(); const id = String(f.get("id") ?? ""); if (!isId(id)) redirect("/ai");
+  await c.sb.from("ai_conversations").delete().eq("id", id); // RLS: only your own conversations can be deleted
+  revalidatePath("/ai"); redirect("/ai");
+}

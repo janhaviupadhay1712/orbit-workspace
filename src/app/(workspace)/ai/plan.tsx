@@ -16,14 +16,15 @@ export default function PlanGenerator() {
   async function approve() {
     if (!plan || busy) return; setBusy(true);
     const r = await approvePlan(plan); setBusy(false);
-    if (r.ok) { setMsg({ ok: true, text: `Created project with ${r.created} verified tasks.` }); setPlan(null); } else setMsg({ ok: false, text: r.error ?? "Failed" });
+    if (r.ok) { setMsg({ ok: true, text: `Created the project with ${r.created} tasks.` }); setPlan(null); } else setMsg({ ok: false, text: r.error ?? "Failed" });
   }
-  return (<div className="space-y-4"><div className="card border-ai/30 bg-ai-bg space-y-3"><h2 className="font-medium">Generate a project plan</h2>
-      <textarea className="input" rows={3} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="Create a project plan for our website redesign" />
-      <button className="btn !bg-ai" disabled={busy || prompt.trim().length < 5} onClick={generate}>{busy && !plan ? "Working…" : "Generate plan"}</button></div>
-    {msg && <p role="alert" className={`text-sm ${msg.ok ? "text-ok" : "text-err"}`}>{msg.text}</p>}
-    {plan && <div className="card space-y-2"><h2 className="font-medium">{plan.name}</h2><p className="text-sm text-sub">{plan.description}</p>
-      <ul className="text-sm list-disc pl-5">{plan.tasks.map((t, i) => <li key={i}>{t.title} <span className="text-sub">({t.priority})</span></li>)}</ul>
-      <div className="flex gap-2"><button className="btn" disabled={busy} onClick={approve}>Approve &amp; create</button>
-        <button className="btn-ghost" onClick={() => setPlan(null)}>Discard</button></div></div>}</div>);
+  return (<div className="mx-auto w-full max-w-2xl space-y-5 p-4 md:p-8">
+    <div><h2 className="text-lg font-semibold tracking-tight">Plan a project</h2><p className="mt-1 text-sm text-sub">Describe a goal. Orbit drafts the tasks for you to review. Nothing is created until you approve.</p></div>
+    <div className="space-y-3"><textarea className="input" rows={4} maxLength={2000} value={prompt} onChange={e => setPrompt(e.target.value)} aria-label="Project goal" placeholder="For example: Plan a website redesign for our marketing site, launching in 6 weeks" />
+      <button className="btn !bg-ai" disabled={busy || prompt.trim().length < 5} onClick={generate}>{busy && !plan ? "Drafting…" : "Draft a plan"}</button></div>
+    {msg && <p role="alert" className={`rounded-lg px-3 py-2 text-sm ${msg.ok ? "bg-emerald-50 text-ok" : "bg-red-50 text-err"}`}>{msg.text}</p>}
+    {plan && <div className="overflow-hidden rounded-xl border border-ai/30 bg-white shadow-sm"><div className="border-b border-ai/20 bg-ai-bg px-4 py-3"><h3 className="font-semibold">{plan.name}</h3>{plan.description && <p className="mt-0.5 text-sm text-sub">{plan.description}</p>}</div>
+      <ul className="divide-y divide-line">{plan.tasks.map((t, i) => <li key={i} className="flex items-start justify-between gap-3 px-4 py-2.5 text-sm"><span>{t.title}</span><span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs capitalize text-sub">{t.priority}</span></li>)}</ul>
+      <div className="flex gap-2 border-t border-line px-4 py-3"><button className="btn" disabled={busy} onClick={approve}>{busy ? "Creating…" : `Approve and create ${plan.tasks.length} tasks`}</button>
+        <button className="btn-ghost" disabled={busy} onClick={() => setPlan(null)}>Discard</button></div></div>}</div>);
 }

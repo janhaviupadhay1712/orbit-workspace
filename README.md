@@ -328,30 +328,5 @@ Server errors are logged on the server, tagged like `[ai:chat]`, and never inclu
 
 ---
 
-## Limitations and future work
 
-These are deliberate scope boundaries for a portfolio project.
 
-- No email is sent by the app itself. Invitations are copy-and-share links.
-- Users see only the first organization they belong to (no workspace switcher).
-- No self-service account deletion or data export.
-- Notifications exist only for new comments on your tasks.
-- The in-memory rate limiter is per server instance; a shared store such as Redis would be needed at scale.
-- Roles are owner, admin and member only. There are no guests and no per-project permissions.
-- AI chat has no saved history and no streaming. It can create tasks and change status, priority and due date after approval, but cannot delete, reassign or create projects from chat.
-- No milestones, teams, documents with semantic search, automations, attachments or billing.
-- No end-to-end tests. The Row Level Security suite is written but unrun.
-
-**Ideas for next steps:** run and extend the RLS suite in CI, add Playwright end-to-end tests, stream AI responses, save chat history, add Redis-backed rate limiting, and add a workspace switcher.
-
----
-
-## Development approach
-
-This project was built with AI pair-programming assistance (Claude) and iterated on by running, debugging and deploying it. [Edit this section to describe your own role honestly, for example which parts you designed, debugged or extended yourself.]
-
----
-
-## License
-
-No license has been chosen yet. Until one is added, all rights are reserved.

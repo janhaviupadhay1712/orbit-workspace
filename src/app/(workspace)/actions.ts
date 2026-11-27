@@ -295,3 +295,31 @@ export async function deleteConversation(f: FormData) {
   await c.sb.from("ai_conversations").delete().eq("id", id); // RLS: only your own conversations can be deleted
   revalidatePath("/ai"); redirect("/ai");
 }
+
+// ---- Knowledge documents (who may edit or delete is decided by the database: the author, or an owner/admin) ----
+export async function createDocument(f: FormData) {
+  const c = await getContext(); if (!c.orgId) redirect("/");
+  const { documentSchema } = await import("@/lib/schemas");
+  const p = documentSchema.safeParse({ title: f.get("title"), body: f.get("body") ?? "", project_id: f.get("project_id") ?? "" });
+  if (!p.success) redirect("/knowledge/new?error=invalid");
+  const v = p.data;
+  const { data, error } = await c.sb.from("documents").insert({ org_id: c.orgId, title: v.title, body: v.body, project_id: v.project_id || null, created_by: c.user.id }).select("id").single();
+  if (error || !data) redirect("/knowledge/new?error=save");
+  await log(c, "document.created", "document", data.id); revalidatePath("/knowledge"); redirect(`/knowledge/${data.id}`);
+}
+export async function updateDocument(f: FormData) {
+  const c = await getContext(); const id = String(f.get("id") ?? ""); if (!isId(id)) redirect("/knowledge");
+  const { documentSchema } = await import("@/lib/schemas");
+  const p = documentSchema.safeParse({ title: f.get("title"), body: f.get("body") ?? "", project_id: f.get("project_id") ?? "" });
+  if (!p.success) redirect(`/knowledge/${id}?error=invalid`);
+  const v = p.data;
+  const { data, error } = await c.sb.from("documents").update({ title: v.title, body: v.body, project_id: v.project_id || null, updated_at: new Date().toISOString() }).eq("id", id).select("id");
+  if (error || !data?.length) redirect(`/knowledge/${id}?error=save`);
+  await log(c, "document.updated", "document", id); revalidatePath("/knowledge"); redirect(`/knowledge/${id}?saved=1`);
+}
+export async function deleteDocument(f: FormData) {
+  const c = await getContext(); const id = String(f.get("id") ?? ""); if (!isId(id)) redirect("/knowledge");
+  const { data, error } = await c.sb.from("documents").delete().eq("id", id).select("id");
+  if (error || !data?.length) redirect(`/knowledge/${id}?error=delete`);
+  await log(c, "document.deleted", "document"); revalidatePath("/knowledge"); redirect("/knowledge");
+}

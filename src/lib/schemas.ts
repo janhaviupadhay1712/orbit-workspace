@@ -33,3 +33,5 @@ export type Proposal = z.infer<typeof proposalSchema>;
 export const PROJECT_STATUSES = ["planning", "active", "on_hold", "completed", "archived"] as const;
 export const projectEditSchema = z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(120), description: z.string().max(2000).default(""),
   status: z.enum(PROJECT_STATUSES), start_date: z.string().date().or(z.literal("")), target_date: z.string().date().or(z.literal("")) });
+  export const documentSchema = z.object({ title: z.string().trim().min(1).max(200), body: z.string().max(50000).default(""), project_id: z.string().uuid().or(z.literal("")) });
+  

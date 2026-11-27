@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { STATUSES, PRIORITIES, escapeLike, progress } from "./schemas";
 
-export type Rec = { type: "task" | "project"; id: string; label: string; href: string };
+export type Rec = { type: "task" | "project" | "document"; id: string; label: string; href: string };
 const PROJECT_STATUSES = ["planning", "active", "on_hold", "completed", "archived"] as const;
 const args = {
   search_tasks: z.object({ query: z.string().max(100).optional(), status: z.enum(STATUSES).optional(), priority: z.enum(PRIORITIES).optional(),

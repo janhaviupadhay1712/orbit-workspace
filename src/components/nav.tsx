@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, CheckSquare, FolderKanban, Sparkles, Search, Bell, CalendarDays, Settings, BarChart3, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Home, CheckSquare, FolderKanban,BookOpen, Sparkles, Search, Bell, CalendarDays, Settings, BarChart3, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 const groups = [
   { title: "Workspace", items: [{ href: "/", label: "Home", Icon: Home }, { href: "/tasks", label: "Tasks", Icon: CheckSquare }, { href: "/inbox", label: "Inbox", Icon: Bell },
-    { href: "/projects", label: "Projects", Icon: FolderKanban }, { href: "/calendar", label: "Calendar", Icon: CalendarDays }, { href: "/search", label: "Search", Icon: Search }] },
+    { href: "/projects", label: "Projects", Icon: FolderKanban }, { href: "/knowledge", label: "Knowledge", Icon: BookOpen }, { href: "/calendar", label: "Calendar", Icon: CalendarDays }, { href: "/search", label: "Search", Icon: Search }] },
   { title: "AI", items: [{ href: "/ai", label: "AI Command Center", Icon: Sparkles }] },
   { title: "Manage", items: [{ href: "/reports", label: "Reports", Icon: BarChart3 }, { href: "/settings", label: "Settings", Icon: Settings }] }];
 type Props = { orgName: string; email: string; displayName: string; avatarUrl: string | null; signOut: () => Promise<void>; collapsed: boolean; onToggle: () => void };
